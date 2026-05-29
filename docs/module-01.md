@@ -2,229 +2,316 @@
 
 **RxJS Mastery: Professional Course – Thinking in Streams**
 
+> **Module Version:** 2.0 (Improved)  
+> **Last Updated:** May 29, 2026
+
+---
+
 ## Module Overview
 
-This foundational module introduces you to the core philosophy and building blocks of RxJS. You will understand why reactive programming matters, master the Observable contract, distinguish between cold and hot observables, and learn the most important creation operators through hands-on practice.
+Welcome to the very beginning of your journey to **RxJS Mastery**. This foundational module will rewire how you think about asynchronous code forever.
 
-**Duration:** ~90 minutes of video content + exercises
-**Prerequisites:** Basic JavaScript/TypeScript and asynchronous programming knowledge
+You will move from thinking in "callbacks and promises" to **thinking in streams** — a powerful mental model used by top frontend and full-stack engineers.
+
+**Estimated Total Time:** 100–120 minutes (video + exercises)
+**Difficulty:** Beginner to Intermediate
+**Prerequisites:** Solid JavaScript/TypeScript fundamentals + basic understanding of async/await and Promises
 
 ---
 
 ## Learning Objectives
 
-By the end of this module, you will be able to:
+By the end of this module you will be able to:
 
-- Explain the difference between imperative, promise-based, and reactive programming
-- Describe the Observable contract (`next`, `error`, `complete`)
-- Differentiate cold vs hot observables and choose the right one
-- Use the core creation operators: `of()`, `from()`, `interval()`, `timer()`, `fromEvent()`, `ajax()`
-- Build a simple reactive number generator application
+- Clearly articulate the difference between imperative, promise-based, and reactive programming
+- Explain and implement the Observable contract (`next`, `error`, `complete`)
+- Confidently choose between **cold** and **hot** observables
+- Master the six most important creation operators
+- Build a fully functional reactive application from scratch
 
 ---
 
 ## Lesson 1.1: The Philosophy of Functional Reactive Programming & RxJS Origins
 
-### Topics Covered
-- History: Haskell List Comprehensions → LINQ → Rx.NET → RxJS
-- Erik Meijer and the creation of Reactive Extensions
-- Why "Thinking in Streams" changes everything
-- The shift from pull-based (arrays/promises) to push-based (Observables)
+**Estimated Time:** 15 minutes
 
-### Key Concepts
-RxJS brings the power of functional programming and the Observer pattern together to handle asynchronous data streams declaratively.
+### Why This Matters
+Most developers treat asynchronous code as an afterthought. RxJS forces you to treat **time** as a first-class citizen. This single shift dramatically reduces bugs in complex UIs, real-time features, and state management.
 
-### Code Example
+### The Historical Lineage
+- **1997** – Functional Reactive Programming (FRP) born in Haskell
+- **2011** – Erik Meijer creates Rx.NET at Microsoft
+- **2012+** – RxJS is born and later modernized by Ben Lesh
+- **Today** – Core part of Angular and widely used in React/Vue ecosystems
+
+### Mental Model
+> "An Observable is a collection that arrives over time."
+
+Instead of pulling data when you want it (arrays, promises), data is **pushed** to you when it becomes available.
+
+### Key Concept
+RxJS = **Observer Pattern + Iterator Pattern + Functional Programming**
+
+### Quick Exercise
+1. Open the browser console
+2. Type the code from the example below
+3. Observe the output
+
 ```ts
 import { of } from 'rxjs';
 
-of(1, 2, 3).subscribe({
-  next: value => console.log(value),
-  complete: () => console.log('Done!')
+of(1, 2, 3, 4).subscribe({
+  next: v => console.log('Received:', v),
+  complete: () => console.log('Stream completed!')
 });
 ```
 
-### Takeaway
-RxJS is not just another library — it is a **paradigm shift** in how you model time-varying data.
+**Takeaway:** You just executed your first reactive stream.
 
 ---
 
 ## Lesson 1.2: The Observable Contract – next, error, complete
 
-### Topics Covered
-- The three methods every Observable must support
-- How Observables differ from Promises and Event Emitters
-- Subscription lifecycle and unsubscription
+**Estimated Time:** 18 minutes
 
-### Visual
-Use marble diagram showing a stream that emits values, then completes.
+### The Three Notifications
+Every Observable can emit three types of notifications:
 
-### Code Example
+| Notification | Purpose | Can it happen multiple times? |
+|--------------|---------|-------------------------------|
+| `next`       | Delivers a value | Yes |
+| `error`      | Terminates with error | No (stream ends) |
+| `complete`   | Gracefully ends the stream | No (stream ends) |
+
+### Deep Dive
+The contract is **extremely simple** but incredibly powerful. It gives you deterministic control over asynchronous flows that are otherwise chaotic.
+
+### Common Mistake
+**Forgetting to handle `error`** — many developers only listen to `next` and are surprised when their app crashes on network failures.
+
+### Recommended Pattern
 ```ts
-import { Observable } from 'rxjs';
-
-const number$ = new Observable<number>(subscriber => {
-  subscriber.next(1);
-  subscriber.next(2);
-  subscriber.complete();
-  // subscriber.error(new Error('Boom!'));
-});
-
-number$.subscribe({
-  next: v => console.log('Value:', v),
-  error: e => console.error(e),
-  complete: () => console.log('Stream finished')
+observable$.subscribe({
+  next: value => { /* handle value */ },
+  error: err => { /* handle error gracefully */ },
+  complete: () => { /* cleanup */ }
 });
 ```
 
-### Key Insight
-The contract is **simple but powerful** — it gives you complete control over the lifecycle of asynchronous data.
+### Visual (Marble Diagram)
+Draw this: A horizontal line with circles (values), then a vertical bar (complete).
+
+### Quick Exercise
+Create an Observable that emits 3 values, then errors. Observe both paths.
+
+**Key Takeaway:** Always handle all three notifications in production code.
 
 ---
 
 ## Lesson 1.3: Cold vs Hot Observables
 
-### Topics Covered
-- Cold Observables: each subscriber gets its own execution
-- Hot Observables: shared execution (Subjects, multicasting)
-- When to use each pattern
-- `shareReplay` and multicasting operators
+**Estimated Time:** 20 minutes
+
+### The Critical Distinction
+- **Cold Observable**: Each new subscriber gets its **own independent execution**. (Default behavior)
+- **Hot Observable**: All subscribers share the **same execution** (uses Subjects or multicasting).
 
 ### Real-World Analogy
-- Cold = Netflix (each viewer starts from beginning)
-- Hot = Live TV (everyone sees the same moment)
+- **Cold** = Netflix — every viewer starts the movie from the beginning
+- **Hot** = Live sports — everyone watches the same moment in real time
+
+### Why It Matters
+Using the wrong type can cause:
+- Memory leaks (too many cold subscriptions)
+- Missed values (subscribing too late to a hot stream)
+- Unexpected duplicate API calls
 
 ### Code Comparison
 ```ts
-// Cold
+import { interval, Subject } from 'rxjs';
+
+// Cold - each subscriber gets independent timer
 const cold$ = interval(1000);
 
-// Hot (using Subject)
+// Hot - shared execution
 const hot$ = new Subject<number>();
 setInterval(() => hot$.next(Date.now()), 1000);
 ```
 
 ### Best Practice
-Start with cold observables. Convert to hot only when you need shared state or performance.
+**Start cold.** Convert to hot only when you need to share expensive operations (HTTP calls, WebSocket connections).
+
+### Quick Exercise
+Subscribe to `interval(1000)` twice. Do both timers start at the same time?
+
+**Key Takeaway:** Cold = independent execution. Hot = shared execution.
 
 ---
 
 ## Lesson 1.4: Creation Operators Masterclass
 
-### Topics Covered
-- `of()` – emit static values
-- `from()` – convert arrays, promises, iterables
-- `interval()` & `timer()` – time-based streams
-- `fromEvent()` – DOM and Node.js events
-- `ajax()` – HTTP requests with cancellation
+**Estimated Time:** 22 minutes
 
-### Code Examples
-```ts
-import { of, from, interval, timer, fromEvent, ajax } from 'rxjs';
+### The Six Essential Creation Operators
 
-// Static values
-of('Hello', 'RxJS', 'World').subscribe(console.log);
+| Operator     | Use Case                              | Example Use |
+|--------------|---------------------------------------|-------------|
+| `of()`       | Emit static values                    | Constants, test data |
+| `from()`     | Convert arrays, promises, iterables   | API responses, arrays |
+| `interval()` | Emit sequential numbers over time     | Polling, timers |
+| `timer()`    | Emit after a delay                    | Delayed actions |
+| `fromEvent()`| DOM / Node.js events                  | Click, input, WebSocket |
+| `ajax()`     | HTTP requests (with cancellation)     | REST API calls |
 
-// From array or promise
-const users$ = from(fetch('/api/users').then(r => r.json()));
+### Pro Tips
+- Prefer `from()` over `of()` when working with arrays
+- Always use `ajax()` instead of `fetch()` when you want automatic cancellation
+- Combine `timer(0, 1000)` for "immediate + repeating"
 
-// Time-based
-const tick$ = interval(1000);
-const delay$ = timer(3000);
+### Common Mistake
+Using `new Observable()` when a creation operator exists — hurts readability and tree-shaking.
 
-// DOM events
-const clicks$ = fromEvent(document, 'click');
+### Quick Exercise
+Create an Observable from a Promise that resolves after 2 seconds.
 
-// HTTP
-const api$ = ajax.getJSON('https://api.github.com/users/hansschenker');
-```
-
-### Pro Tip
-Always prefer creation operators over `new Observable()` for better readability and tree-shaking.
+**Key Takeaway:** Creation operators are your entry point into the reactive world.
 
 ---
 
 ## Lesson 1.5: Project Workshop – Reactive Number Generator
 
+**Estimated Time:** 25 minutes
+
 ### Project Goal
-Build a small web app that generates random numbers every second and displays statistics (min, max, average) using only RxJS.
+Build a beautiful, fully reactive number generator dashboard that:
+- Generates random numbers every second
+- Shows the last 10 numbers in real time
+- Calculates live min, max, and average
+- Allows starting/stopping the stream
 
-### Requirements
-1. Use `interval()` to emit every 1000ms
-2. Generate random numbers between 1–100
-3. Display live list of last 10 numbers
-4. Show real-time min/max/average using `scan` and `map`
-5. Add start/stop controls
+### Complete Working Code (HTML + TypeScript)
 
-### Starter Code
-```ts
-import { interval, Subject } from 'rxjs';
-import { scan, map, takeUntil } from 'rxjs/operators';
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <title>RxJS Number Generator</title>
+  <script src="https://unpkg.com/rxjs@7/dist/bundles/rxjs.umd.min.js"></script>
+</head>
+<body>
+  <h1>Reactive Number Generator</h1>
+  <button id="start">Start</button>
+  <button id="stop">Stop</button>
+  <div id="stats"></div>
+  <ul id="numbers"></ul>
 
-const stop$ = new Subject<void>();
+  <script>
+    const { interval, Subject, fromEvent } = rxjs;
+    const { scan, map, takeUntil, startWith } = rxjs.operators;
 
-const numbers$ = interval(1000).pipe(
-  map(() => Math.floor(Math.random() * 100) + 1),
-  takeUntil(stop$)
-);
+    const startBtn = document.getElementById('start');
+    const stopBtn = document.getElementById('stop');
+    const numbersList = document.getElementById('numbers');
+    const statsDiv = document.getElementById('stats');
 
-numbers$.pipe(
-  scan((acc, num) => [...acc.slice(-9), num], [])
-).subscribe(list => {
-  // update UI
-});
+    const stop$ = new Subject();
+
+    fromEvent(startBtn, 'click').subscribe(() => {
+      const numbers$ = interval(1000).pipe(
+        map(() => Math.floor(Math.random() * 100) + 1),
+        takeUntil(stop$)
+      );
+
+      numbers$.pipe(
+        scan((acc, num) => [...acc.slice(-9), num], []),
+        startWith([])
+      ).subscribe(list => {
+        numbersList.innerHTML = list.map(n => `<li>${n}</li>`).join('');
+
+        if (list.length > 0) {
+          const min = Math.min(...list);
+          const max = Math.max(...list);
+          const avg = (list.reduce((a, b) => a + b, 0) / list.length).toFixed(1);
+          statsDiv.innerHTML = `Min: ${min} | Max: ${max} | Avg: ${avg}`;
+        }
+      });
+    });
+
+    fromEvent(stopBtn, 'click').subscribe(() => stop$.next());
+  </script>
+</body>
+</html>
 ```
 
+### Stretch Goals
+1. Add a "Clear" button
+2. Persist the last 50 numbers in localStorage
+3. Show a simple line chart using Chart.js + RxJS
+
 ### Deliverable
-A working reactive number generator with live statistics.
+A working, beautiful reactive dashboard.
+
+**Key Takeaway:** You now have a complete reactive application built only with RxJS.
 
 ---
 
 ## End-of-Module Quiz
 
-**5 Multiple Choice Questions**
+**5 Multiple Choice Questions** (Improved)
 
-1. What does the `complete` notification in an Observable mean?
-   - A) An error occurred
-   - B) No more values will be emitted
-   - C) The stream is paused
-   - D) The subscriber was unsubscribed
+1. What happens if you subscribe to a cold Observable multiple times?
+   - A) All subscribers share the same execution
+   - B) Each subscriber gets its own independent execution
+   - C) Only the first subscriber receives values
+   - D) The stream throws an error
 
-2. Which creation operator is best for converting an array into an Observable?
-   - A) `of()`
-   - B) `from()`
-   - C) `interval()`
-   - D) `timer()`
+2. Which notification **always** ends an Observable stream?
+   - A) `next`
+   - B) `error` and `complete`
+   - C) Only `complete`
+   - D) Only `error`
 
-3. A cold Observable...
-   - A) Shares execution between subscribers
-   - B) Executes once for every new subscriber
-   - C) Only works with HTTP requests
-   - D) Cannot complete
+3. You should convert a cold Observable to hot when...
+   - A) You want to avoid duplicate expensive operations
+   - B) You want every subscriber to start from the beginning
+   - C) You are working with static values
+   - D) You want better TypeScript support
 
-4. What is the main advantage of using `fromEvent()` over `addEventListener`?
-   - A) Better performance
-   - B) Built-in cancellation via unsubscribe
-   - C) Automatic error handling
-   - D) Both B and C
+4. What is the main advantage of `ajax()` over the native `fetch()`?
+   - A) Faster requests
+   - B) Automatic cancellation on unsubscription
+   - C) Better error messages
+   - D) Built-in caching
 
-5. In the Number Generator project, which operator is used to keep a rolling window of the last 10 numbers?
-   - A) `map`
-   - B) `filter`
-   - C) `scan`
-   - D) `mergeMap`
+5. In the Number Generator project, which operator combination keeps a rolling window of the last 10 numbers?
+   - A) `map` + `filter`
+   - B) `scan` + `slice`
+   - C) `mergeMap` + `take`
+   - D) `debounceTime` + `distinctUntilChanged`
 
-**Answers:** 1-B, 2-B, 3-B, 4-D, 5-C
+**Correct Answers:** 1-B, 2-B, 3-A, 4-B, 5-B
 
----
-
-## Resources & Further Reading
-- Official RxJS Documentation: [rxjs.dev](https://rxjs.dev)
-- Marble Diagrams: [rxmarbles.com](https://rxmarbles.com)
-- "Reactive Programming with RxJS" book
-
-**Next Module:** Module 02 – Core Concepts (Observer vs Iterator, Marble Diagrams, Schedulers)
+**Explanations:**
+- Q1: Cold observables are independent per subscriber.
+- Q2: Both `error` and `complete` terminate the stream.
+- Q3: Hot observables share expensive work (e.g. one HTTP call for many components).
+- Q4: `ajax()` returns an Observable that can be cancelled via `unsubscribe()`.
+- Q5: `scan` accumulates values while `slice(-9)` keeps only the last 10.
 
 ---
 
-*Module created as part of the RxJS Mastery Professional Course – May 2026*
+## Module Summary & Next Steps
+
+You now understand the **foundational building blocks** of RxJS:
+- The Observable contract
+- Cold vs Hot behavior
+- Creation operators
+- How to build real reactive UIs
+
+**Next Module:** Module 02 – Core Concepts (Observer vs Iterator, Marble Diagrams, Schedulers Deep Dive)
+
+**Recommended Practice:** Rebuild the Number Generator project from memory without looking at the code.
+
+---
+
+*Improved Module 01 v2.0 – Part of the RxJS Mastery Professional Course*
