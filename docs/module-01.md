@@ -102,7 +102,7 @@ observable$.subscribe({
 
 In video production, show (or draw live) the following marble diagram:
 
-```
+```text
 --1---2---3---|-->
 ```
 
