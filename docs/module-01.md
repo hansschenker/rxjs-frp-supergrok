@@ -172,6 +172,11 @@ setInterval(() => hot$.next(Date.now()), 1000);
 ### Best Practice
 **Start cold.** Convert to hot only when you need to share expensive operations (HTTP calls, WebSocket connections).
 
+### Common Mistakes
+- Subscribing multiple times to a cold observable that performs expensive work (e.g. HTTP call) → causes duplicate requests.
+- Subscribing late to a hot observable (e.g. WebSocket or user events) → missing values that were emitted before subscription.
+- Forgetting to unsubscribe from long-lived cold observables → memory leaks.
+
 ### Quick Exercise
 Subscribe to `interval(1000)` twice. Do both timers start at the same time?
 
@@ -223,6 +228,7 @@ Build a clean, robust, and visually appealing reactive dashboard that demonstrat
 - Calculate live statistics (count, min, max, average) derived from the stream
 - Properly manage subscriptions to avoid memory leaks
 - Handle user actions (start, stop, clear) declaratively
+- Includes keyboard shortcuts (S = Start, X = Stop, C = Clear) for better UX
 
 This project reinforces the core concepts from Lessons 1.1–1.4 while establishing good habits that will scale to the advanced patterns taught later in the course.
 
@@ -331,7 +337,7 @@ Most beginners write reactive code that *appears* to work but leaks subscription
   </div>
 
   <script>
-    const { interval, fromEvent, Subscription } = rxjs;
+    const { interval, fromEvent } = rxjs;
     const { map, scan, startWith, tap } = rxjs.operators;
 
     // DOM references
@@ -550,7 +556,7 @@ A working, clean reactive dashboard that:
    - C) Better error messages
    - D) Built-in caching
 
-5. In the Number Generator project, which operator combination keeps a rolling window of the last 10 numbers?
+5. In the Live Number Stream Dashboard project, which operator combination keeps a rolling window of the last 10 numbers?
    - A) `map` + `filter`
    - B) `scan` + `slice`
    - C) `mergeMap` + `take`
@@ -581,4 +587,4 @@ You now understand the **foundational building blocks** of RxJS:
 
 ---
 
-*Improved Module 01 v2.0 – Part of the RxJS Mastery Professional Course*
+*Improved Module 01 v2.1 – Part of the RxJS Mastery Professional Course*
