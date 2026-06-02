@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repository is
 
-A **content-only repository** for *RxJS Mastery: Professional Course – Thinking in Streams* — a 20-module course on Functional Reactive Programming with RxJS. There is no application to build: every tracked file is Markdown under `docs/`. There is no `package.json`, no test runner, no linter, and no CI. "Working in this repo" means authoring and editing course Markdown, not running tooling.
+A **content-only repository** for *RxJS Mastery: Professional Course – Thinking in Streams* — a 20-module course on Functional Reactive Programming with RxJS. There is no application to build: every tracked file is Markdown under `docs/`. There is no `package.json` and no application to build or test; the only automated tooling is **Markdown CI** — a lint check and a link check that run in GitHub Actions (see [Continuous Integration](#continuous-integration)). "Working in this repo" means authoring and editing course Markdown.
 
 The RxJS/TypeScript code that appears inside the modules is **course material** (lesson snippets and self-contained project demos), not a buildable project. Self-contained demos use RxJS 7 from a CDN (`https://unpkg.com/rxjs@7/...`) plus Tailwind via CDN, so a learner can run them by opening a single HTML file in a browser.
 
@@ -41,4 +41,19 @@ The 5 lesson titles and the quiz topic for each module are fixed by `course-outl
 
 ## Git
 
-Work happens on per-module branches (e.g. `improve/module-01-foundations`, `feature/module-01-v2`) merged into `main`. When improving a module, branch per module rather than batching unrelated module edits together.
+Work happens on per-module branches (e.g. `improve/module-01-foundations`, `feature/module-01-v2`) merged into `main` via pull request. When improving a module, branch per module rather than batching unrelated module edits together. Every PR must pass CI before it can merge (see below).
+
+## Continuous Integration
+
+GitHub Actions runs Markdown-quality checks (there is no app build — the demos run from a CDN in the browser). Workflows live in `.github/workflows/`:
+
+- **`markdownlint.yml`** — lints `docs/**/*.md` with `markdownlint-cli2` (config: `.markdownlint-cli2.jsonc`). It is a **required** status check on `main`: a PR cannot merge until it passes. The config keeps **MD040** (fenced code blocks must declare a language) enabled — catching the bare ` ``` ` fences the module stubs once shipped — and disables rules that conflict with the course's intentional style (e.g. MD013 long prose, MD036 bolded `Key Takeaway`, MD024 recurring lesson sub-headings). Runs on every push to `main` and every PR.
+- **`link-check.yml`** — checks links in `docs/**/*.md` with `lychee` (ignore patterns in `.lycheeignore`). **Informational** (not required), so transient external failures never block merges. Note: lychee does not scan URLs inside code blocks, so the CDN `<script>` tags in the demos aren't checked; it mainly guards prose/relative links added later (`failIfEmpty: false`).
+
+Run the lint locally before pushing (matches CI; needs Node):
+
+```bash
+npx markdownlint-cli2          # uses .markdownlint-cli2.jsonc; expect "0 error(s)"
+```
+
+CodeRabbit also auto-reviews each PR. The branch-protection rule on `main` requires the `markdownlint` check **by job name** — if you rename that job, update the protection rule or merges will wait on a check that never reports.
