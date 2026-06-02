@@ -27,7 +27,7 @@ This course takes you from RxJS fundamentals to expert-level reactive architectu
 - Custom domain operators
 - Comprehensive **marble diagram testing**
 - Production-grade patterns (error handling, resilience, performance)
-- Capstone project: Enterprise E-commerce Platform
+- Capstone project: Collaborative Real-Time Dashboard (full integration)
 
 ---
 
