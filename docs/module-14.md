@@ -58,6 +58,8 @@ window output: w1:(--1--2--3|)  w2:(--4--5--6|)   (each w is its own Observable)
 clicks$.pipe(bufferCount(10)).subscribe(tenClicks => send(tenClicks));
 
 // window: reduce within each window, then flatten (Module 05)
+import { count, mergeMap } from 'rxjs/operators';
+
 clicks$.pipe(
   windowTime(1000),
   mergeMap(win$ => win$.pipe(count()))   // clicks-per-second
@@ -207,6 +209,8 @@ Write an analytics batcher that flushes every 3s or at 10 events, drops empty ba
 The classic `window` use: compute a statistic per time window.
 
 ```ts
+import { mergeMap, reduce } from 'rxjs/operators';
+
 clicks$.pipe(
   windowTime(1000),
   mergeMap(win$ => win$.pipe(
@@ -271,7 +275,7 @@ This is real analytics infrastructure in miniature. You will *see* batching coll
 1. **Setup** — Single HTML file with Tailwind + RxJS 7 from CDN; controls, metrics, and a batch log.
 2. **Event source** — `merge` a manual `Subject` with a toggleable auto-feed; `share()` it.
 3. **Strategy** — `bufferTime` / `bufferCount` / `bufferTime(span, null, max)`, filtered to non-empty.
-4. **Send** — log each batch; update metrics.
+4. **Send** — pass each batch through a fake async endpoint with `concatMap`; update metrics when it completes.
 5. **Switch** — `switchMap` over the strategy selector to swap batchers live.
 
 ### Complete Working Code
@@ -318,8 +322,8 @@ This is real analytics infrastructure in miniature. You will *see* batching coll
   </div>
 
   <script>
-    const { interval, merge, Subject, EMPTY } = rxjs;
-    const { map, bufferTime, bufferCount, filter, share, switchMap, startWith } = rxjs.operators;
+    const { interval, merge, Subject, EMPTY, of } = rxjs;
+    const { map, bufferTime, bufferCount, filter, share, switchMap, startWith, concatMap, delay, tap } = rxjs.operators;
 
     const TYPES = ['click', 'view', 'scroll', 'hover', 'purchase'];
     const randomEvent = () => ({ type: TYPES[Math.floor(Math.random() * TYPES.length)], ts: Date.now() });
@@ -348,10 +352,13 @@ This is real analytics infrastructure in miniature. You will *see* batching coll
     }
 
     const strategy$ = new Subject();
+    const postBatch = batch => of(batch).pipe(delay(250));
+
     strategy$.pipe(
       startWith('smart'),
-      switchMap(strat => applyStrategy(strat).pipe(filter(b => b.length > 0)))
-    ).subscribe(batch => sendBatch(batch));
+      switchMap(strat => applyStrategy(strat).pipe(filter(b => b.length > 0))),
+      concatMap(batch => postBatch(batch).pipe(tap(sendBatch)))
+    ).subscribe();
 
     // --- "Send" a batch (logged) ---
     const logEl = document.getElementById('log');
@@ -390,6 +397,7 @@ This is real analytics infrastructure in miniature. You will *see* batching coll
 - **`buffer*` turns N events into one batch** — the "calls saved" metric (`totalBatched − batchesSent`) is the payoff.
 - **Smart flush = time OR count** — `bufferTime(span, null, maxSize)` flushes whichever comes first, balancing latency and efficiency.
 - **Always drop empty batches** — `bufferTime` emits `[]` on idle windows; `filter(b => b.length > 0)` keeps you from "sending nothing."
+- **`concatMap` sends batches in order** — a new batch waits until the previous fake request completes.
 - **`switchMap` swaps strategies live** — the shared `events$` keeps counting while the batcher re-subscribes.
 
 ### Stretch Goals (Recommended Practice)

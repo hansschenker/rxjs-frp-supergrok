@@ -93,7 +93,7 @@ Inside `scheduler.run(helpers => { ... })` you get:
 ```ts
 scheduler.run(({ hot, expectObservable }) => {
   const source$ = hot('--a--b--c--|'); // values before ^ are missed by the subscriber
-  const sub =         '   ^--------!'; // subscribe at frame 3, unsubscribe at the end
+  const sub =         '---^--------!'; // subscribe at frame 3, unsubscribe at the end
   expectObservable(source$, sub).toBe('-----b--c--|');
 });
 ```
@@ -103,7 +103,7 @@ scheduler.run(({ hot, expectObservable }) => {
 scheduler.run(({ cold, expectObservable }) => {
   const source$ = cold('a 9ms b 9ms c|');          // time progression syntax
   expectObservable(source$.pipe(debounceTime(5)))
-    .toBe('5ms a 9ms b 9ms (c|)');                  // (illustrative)
+    .toBe('5ms a 9ms b 5ms (c|)');
 });
 ```
 

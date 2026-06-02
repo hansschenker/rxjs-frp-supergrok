@@ -55,9 +55,9 @@ You already have the primitives other state libraries are built on:
 | NgRx    | Redux + RxJS effects | `scan` store + flattening operators for effects |
 | Zustand | a subscribable store | a `BehaviorSubject` |
 
-> RxJS isn't a competitor to these — it's the **engine** underneath them. Once you see `scan` + reducer, NgRx stops being magic.
+> RxJS isn't a competitor to these. It gives you the same reactive primitives and mental model many state libraries expose: a subscribable source, pure updates, derived reads, and side-effect boundaries. Once you see `scan` + reducer, NgRx stops being magic.
 
-**Key Takeaway:** RxJS brings functional, immutable, time-aware state management — the same model Redux/NgRx/Zustand are built on.
+**Key Takeaway:** RxJS brings functional, immutable, time-aware state management — the same model you will recognize in Redux, NgRx, Zustand, and similar stores.
 
 ---
 
@@ -183,6 +183,8 @@ const activeCount$ = state$.pipe(
 );
 ```
 
+For selectors that return new arrays or objects, the default `distinctUntilChanged()` only compares references. Add a comparator or memoize the selector when you want to suppress equivalent derived values.
+
 ### Async Actions (Effects) — Preview
 Side effects (HTTP) live *outside* the reducer (reducers must stay pure). An "effect" listens for an action, does async work, and dispatches a result action — using the flattening operators from Module 05:
 
@@ -254,7 +256,9 @@ const state$ = actions$.pipe(scan(reducer, initial), startWith(initial), shareRe
 const visibleTodos$ = state$.pipe(
   map(s => s.todos.filter(t =>
     s.filter === 'all' ? true : s.filter === 'active' ? !t.done : t.done)),
-  distinctUntilChanged()
+  distinctUntilChanged((a, b) =>
+    a.length === b.length && a.every((todo, i) => todo === b[i])
+  )
 );
 ```
 

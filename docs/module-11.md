@@ -58,7 +58,7 @@ const initialHistoryState: HistoryState<TodoState> = {
 The elegant trick: a function that *wraps any reducer* and gives it history — your base reducer never changes.
 
 ```ts
-function undoable<T>(reducer: (s: T, a: any) => T) {
+function undoable<T>(reducer: (s: T, a: any) => T, maxHistory = 50) {
   return (state: HistoryState<T>, action: any): HistoryState<T> => {
     const { past, present, future } = state;
     switch (action.type) {
@@ -75,7 +75,7 @@ function undoable<T>(reducer: (s: T, a: any) => T) {
       default: {
         const newPresent = reducer(present, action);
         if (newPresent === present) return state;       // no change → don't record history
-        return { past: [...past, present], present: newPresent, future: [] };
+        return { past: [...past, present].slice(-maxHistory), present: newPresent, future: [] };
       }
     }
   };
@@ -222,10 +222,12 @@ user acts ──► optimistic state (instant UI) ──► request ──┬─
 ### Implementing It
 ```ts
 function save(todo) {
+  const prev = getCurrentState().todos.find(t => t.id === todo.id);
+
   dispatch({ type: 'UPDATE_OPTIMISTIC', todo });          // 1) instant UI update
   api.update(todo).pipe(
     map(() => ({ type: 'UPDATE_CONFIRMED', id: todo.id })),
-    catchError(() => of({ type: 'UPDATE_ROLLBACK', id: todo.id, prev: todo }))  // 3) undo on failure
+    catchError(() => of({ type: 'UPDATE_ROLLBACK', id: todo.id, prev }))  // 3) restore the pre-update value
   ).subscribe(dispatch);
 }
 ```
@@ -275,7 +277,7 @@ Take the Module 10 Todo reducer and wrap it with `undoable` to add professional 
 - **Undo / Redo** buttons (disabled when there's nothing to undo/redo)
 - A **time-travel slider** that scrubs through the entire history
 - **Keyboard shortcuts** — Ctrl/Cmd+Z to undo, Ctrl/Cmd+Shift+Z (or Ctrl+Y) to redo
-- History info (steps back / forward) and a no-op guard so trivial actions don't pollute history
+- Bounded history info (steps back / forward) and a no-op guard so trivial actions don't pollute history
 
 ### Why This Project Matters
 
@@ -284,7 +286,7 @@ You will see that adding undo/redo/time-travel required **zero changes to the ba
 ### Step-by-Step Build (Video-Friendly)
 
 1. **Setup** — Single HTML file with Tailwind + RxJS 7 from CDN; reuse the Todo reducer from Module 10.
-2. **Wrap** — `undoable(todoReducer)` with `UNDO` / `REDO` / `JUMP`.
+2. **Wrap** — `undoable(todoReducer, 50)` with `UNDO` / `REDO` / `JUMP`.
 3. **Store** — `actions$ → scan(undoable(reducer), initialHistory) → history$`.
 4. **Render** — present todos + history controls (undo/redo/slider) from `history$`.
 5. **Shortcuts** — a keyboard stream dispatches UNDO/REDO.
@@ -344,7 +346,9 @@ You will see that adding undo/redo/time-travel required **zero changes to the ba
     }
 
     // --- undoable higher-order reducer (Lessons 11.1–11.2) ---
-    function undoable(reducer) {
+    const MAX_HISTORY = 50;
+
+    function undoable(reducer, maxHistory = MAX_HISTORY) {
       return (state, action) => {
         const { past, present, future } = state;
         switch (action.type) {
@@ -364,7 +368,7 @@ You will see that adding undo/redo/time-travel required **zero changes to the ba
           default: {
             const newPresent = reducer(present, action);
             if (newPresent === present) return state;   // no-op guard
-            return { past: [...past, present], present: newPresent, future: [] };
+            return { past: [...past, present].slice(-maxHistory), present: newPresent, future: [] };
           }
         }
       };
@@ -375,7 +379,7 @@ You will see that adding undo/redo/time-travel required **zero changes to the ba
     // --- Store ---
     const actions$ = new Subject();
     const dispatch = a => actions$.next(a);
-    const history$ = actions$.pipe(scan(undoable(todoReducer), initial), startWith(initial), shareReplay(1));
+    const history$ = actions$.pipe(scan(undoable(todoReducer, MAX_HISTORY), initial), startWith(initial), shareReplay(1));
 
     // --- DOM ---
     const listEl = document.getElementById('list');
@@ -444,7 +448,7 @@ You will see that adding undo/redo/time-travel required **zero changes to the ba
 
 ### Stretch Goals (Recommended Practice)
 
-1. Bound `past` to the last 50 entries (Lesson 11.2) and confirm old history drops off.
+1. Change `MAX_HISTORY` and confirm old history drops off at the configured limit.
 2. Add nested/array state (todos with sub-tasks) and verify undo still works (immutability!).
 3. Persist the whole `HistoryState` to localStorage and restore on load.
 4. Add an optimistic "sync" that randomly fails and rolls back via a targeted action (Lesson 11.4).

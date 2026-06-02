@@ -108,7 +108,7 @@ Write a stateful `runningMax()` operator (emits the maximum seen so far) two way
 Make operators reusable across types with generics and constraints:
 
 ```ts
-import { OperatorFunction } from 'rxjs';
+import { Observable, OperatorFunction } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 // Works for any object with an `id` — constrained generic
@@ -232,6 +232,23 @@ my-rx-operators/
 - **`peerDependencies`**: `{ "rxjs": "^7.0.0" }` — depend on the *consumer's* RxJS, never bundle your own (two RxJS copies break `instanceof`/operators).
 - **`sideEffects: false`** — tells bundlers your modules are tree-shakeable, so consumers only ship the operators they import.
 - **`exports`/`module`/`types`** — ship ESM + type declarations for proper inference and tree-shaking.
+
+```json
+{
+  "name": "my-rx-operators",
+  "type": "module",
+  "sideEffects": false,
+  "peerDependencies": {
+    "rxjs": "^7.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  }
+}
+```
 
 ### Tree-Shakeable Exports
 Export each operator from its own file via a barrel. Consumers `import { runningAverage } from 'my-rx-operators'` and bundlers drop the rest. Avoid a giant single-object default export — it defeats tree-shaking.

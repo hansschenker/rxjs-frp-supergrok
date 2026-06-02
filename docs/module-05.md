@@ -101,6 +101,8 @@ mergeMap:   --a1--a2--a3-b1--b2--b3|   (nothing is cancelled; all interleave)
 ### switchMap — Keep Only the Latest
 When a new outer value arrives, it **unsubscribes** from the previous inner Observable and switches to the new one.
 
+That unsubscription only aborts the underlying work if the inner source supports teardown (for example `ajax`/XHR or `fromFetch` with abort support). If the inner is a native Promise, the Promise continues running even though its result is ignored.
+
 ```text
 source:    --a--------b---------|
 switchMap:   --a1--a2----b1--b2--b3|   (a3 is cancelled when b arrives)
@@ -430,7 +432,7 @@ rate limited → error
 
 1. Add a per-user enrichment step: `mergeMap` (capped at 5) to fetch each user's repo count, then `toArray()` (nested flattening from Lesson 5.4).
 2. Add a spinner and disable the input while loading.
-3. Cache results per query with a `Map` so re-typing an old query is instant (preview of Module 14, caching).
+3. Cache results per query with a `Map` or `shareReplay` strategy so re-typing an old query is instant (preview of Module 18's sharing/performance patterns).
 4. Swap `switchMap` for `mergeMap` and `concatMap` and observe how the results misbehave — then switch back.
 
 ### Deliverable
@@ -494,7 +496,7 @@ You now command higher-order Observables and the four flatteners:
 - Pitfalls: unbounded `mergeMap` concurrency, `switchMap` on writes, inner errors, outer cleanup
 - Real-world patterns including nested flattening, and a real GitHub search with full state handling
 
-**Next Module:** Module 06 – Custom Flattening (combination operators like `combineLatest`, `forkJoin`, `withLatestFrom`, `zip`, and building your own flattening behavior)
+**Next Module:** Module 06 – Custom Flattening (priority routing, custom flattening behavior, and backpressure-aware task queues)
 
 **Recommended Practice:** Extend the GitHub search with the nested-flattening stretch goal (enrich each user in parallel with capped `mergeMap`), and try all four flatteners to feel the difference.
 

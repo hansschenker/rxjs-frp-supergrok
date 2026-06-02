@@ -108,7 +108,7 @@ toObservable(this.query).pipe(
 ```
 
 ### A Vanilla "Signal" (to see the idea)
-A signal is essentially a synchronous `BehaviorSubject` with a getter. Conceptually:
+A rough mental model is "a synchronous value with a getter and subscribers." A real framework signal also has dependency tracking, fine-grained invalidation, and no Observable-style `error`/`complete` channel. Conceptually:
 
 ```ts
 function signal<T>(initial: T) {
@@ -124,7 +124,7 @@ function signal<T>(initial: T) {
 > If it involves **time or async** (debounce, HTTP, retry, merge), it's RxJS. If it's **synchronous derived state** for the view, it's a signal. Bridge at the edges.
 
 ### Common Mistake
-**Rebuilding async orchestration with signals + `effect`.** Signals don't debounce, cancel, or retry. Doing search-as-you-type purely with signal effects reinvents (badly) what `switchMap`+`debounceTime` already do. Keep async in RxJS.
+**Rebuilding async orchestration with signals + `effect`.** Signal effects can approximate timers and async work, but RxJS is the better primitive for debounce, cancellation, retry, and multi-event coordination. Keep async orchestration in RxJS and bridge the resulting state to signals.
 
 ### Quick Exercise
 For each, pick RxJS or signal: (a) the current theme, (b) a typeahead search, (c) a form's validity, (d) a websocket feed.
@@ -425,7 +425,7 @@ A layered Users feature: a swappable data layer, a facade exposing one `viewMode
 **Explanations:**
 - Q1: Feature-based architecture co-locates everything a feature needs and exposes a small facade, improving cohesion and ownership.
 - Q2: The facade is the feature's public API — read-only streams and intent methods — keeping store/API/operators sealed inside.
-- Q3: RxJS owns async/time orchestration (debounce, HTTP, retry, cancellation); signals handle synchronous view state.
+- Q3: RxJS is the better tool for async/time orchestration (debounce, HTTP, retry, cancellation); signals handle synchronous view state.
 - Q4: Dependencies point downward; the data layer is swappable without affecting the layers above.
 - Q5: Refactor incrementally behind facades — characterize with tests, extract layers, migrate feature by feature — never big-bang.
 

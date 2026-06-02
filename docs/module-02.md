@@ -23,7 +23,7 @@ By the end of this module you will be able to:
 
 - Clearly explain the Observer vs Iterator duality
 - Read, draw, and reason with marble diagrams fluently
-- Choose the correct scheduler for any performance or timing requirement
+- Explain the main scheduler choices and choose one for common timing, animation, and testing needs
 - Implement proper subscription cleanup to prevent memory leaks
 - Build a fully functional interactive marble diagram visualizer
 
@@ -183,9 +183,9 @@ A Scheduler is the component that answers one question: **"when should this work
 | Scheduler                   | Executes work...                          | Best for |
 |-----------------------------|-------------------------------------------|----------|
 | `queueScheduler`            | Synchronously, but queued (avoids recursion) | Recursive/iterative work that must stay sync |
-| `asapScheduler`             | As soon as possible — microtask (before next render) | High-priority async work after the current task |
+| `asapScheduler`             | As soon as possible — usually before later macrotasks/render work | High-priority async work after the current task |
 | `asyncScheduler`            | Asynchronously — macrotask (`setTimeout`) | `delay`, `interval`, `timer`, general async timing |
-| `animationFrameScheduler`   | Right before the browser repaints (`requestAnimationFrame`) | Smooth 60fps animations driven by streams |
+| `animationFrameScheduler`   | Right before the browser repaints (`requestAnimationFrame`) | Repaint-aligned animations driven by streams |
 
 > The **default** (no scheduler passed) is synchronous for `of`/`from`, and `asyncScheduler` for time operators like `interval` and `timer`.
 
@@ -329,7 +329,7 @@ This project ties together every concept in the module: the push model (2.1), ma
 
 ### Why This Project Matters
 
-Reading static marble diagrams is one thing; *watching* values flow and transform makes the mental model click. Building the visualizer also forces you to practice the correct `takeUntil` teardown pattern on an infinite-ish source — exactly the habit that prevents leaks in production.
+Reading static marble diagrams is one thing; *watching* values flow and transform makes the mental model click. This visualizer simulates operator behavior for learning; exact timing assertions still belong in `TestScheduler` tests. Building it also forces you to practice the correct `takeUntil` teardown pattern on an infinite-ish source — exactly the habit that prevents leaks in production.
 
 ### Step-by-Step Build (Video-Friendly)
 
@@ -652,7 +652,7 @@ A working visualizer that:
    - C) The `complete` notification
    - D) A paused stream
 
-3. Which scheduler should you use to drive a smooth, 60fps animation from a stream?
+3. Which scheduler should you use to drive repaint-aligned animation from a stream?
    - A) `asyncScheduler`
    - B) `queueScheduler`
    - C) `asapScheduler`

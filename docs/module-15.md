@@ -131,9 +131,11 @@ A common real-time use: flag values that deviate from the moving average by more
 
 ```ts
 function isAnomaly(value: number, window: number[], k = 2.5) {
-  const mean = window.reduce((a, b) => a + b, 0) / window.length;
-  const sd = Math.sqrt(window.reduce((a, b) => a + (b - mean) ** 2, 0) / window.length);
-  return Math.abs(value - mean) > k * sd;   // outside k std-devs
+  const baseline = window.slice(0, -1);     // compare current value to prior history
+  if (baseline.length < 2) return false;
+  const mean = baseline.reduce((a, b) => a + b, 0) / baseline.length;
+  const sd = Math.sqrt(baseline.reduce((a, b) => a + (b - mean) ** 2, 0) / baseline.length);
+  return sd > 0 && Math.abs(value - mean) > k * sd;   // outside k std-devs
 }
 ```
 
@@ -161,6 +163,8 @@ requests$.pipe(
 ).subscribe(process);
 ```
 
+This is a fixed-window limiter. It can still allow boundary bursts (for example, five requests at the end of one second and five more at the start of the next). Use a token bucket or sliding-window strategy when you need smoother enforcement.
+
 ### Throttle vs Window-Based Limiting
 - `throttleTime(t)` — at most one per `t` (leading). Simple, single-rate.
 - Window + `take(n)` — up to **n** per window. Use when a burst of n is acceptable but a sustained flood is not.
@@ -175,9 +179,9 @@ For a high-rate metric you only need to *show* periodically — `sampleTime`/`au
 **Confusing display rate with processing rate.** You can aggregate every value (for correctness) while only *rendering* a windowed sample (for performance). Don't throttle the data you need for the metric — only the rendering.
 
 ### Quick Exercise
-Limit a click stream to 3 actions per 2 seconds using `windowTime(2000)` + `take(3)`, and log when extra clicks are ignored.
+Limit a click stream to 3 actions per 2 seconds using `windowTime(2000)` + `take(3)`. If you also need to log ignored clicks, count each full window and compare its total with the three emitted values; `take(3)` by itself only forwards allowed clicks.
 
-**Key Takeaway:** Window + `take(n)` enforces "n per window" rate limits; `throttleTime` is the single-rate shortcut; aggregate at full rate but render at a sampled rate.
+**Key Takeaway:** Window + `take(n)` enforces fixed-window "n per window" rate limits; use token/sliding-window approaches for smoother limits, `throttleTime` as the single-rate shortcut, and aggregate at full rate while rendering sampled views.
 
 ---
 
@@ -304,7 +308,7 @@ This is the shape of every monitoring/trading/IoT dashboard: ingest a fast metri
     const { interval, Subject } = rxjs;
     const { map, share, scan, bufferTime, filter } = rxjs.operators;
 
-    let N = 20, K = 2.5, ema = null, anomalies = 0, base = 50;
+    let N = 20, K = 2.5, anomalies = 0, base = 50;
 
     const nEl = document.getElementById('n'), kEl = document.getElementById('k');
     nEl.addEventListener('input', () => { N = +nEl.value; document.getElementById('nVal').textContent = N; });
@@ -322,11 +326,17 @@ This is the shape of every monitoring/trading/IoT dashboard: ingest a fast metri
 
     const feed$ = interval(250).pipe(map(nextValue), share());
 
-    // Sliding window: keep last N (read live so the slider adjusts it)
-    feed$.pipe(scan((win, v) => [...win, v].slice(-N), [])).subscribe(win => {
+    // Sliding state: keep last N and carry EMA in the stream state.
+    feed$.pipe(scan((state, v) => {
+      const win = [...state.win, v].slice(-N);
+      const ema = state.ema === null ? v : 0.2 * v + 0.8 * state.ema;
+      return { win, ema };
+    }, { win: [], ema: null })).subscribe(({ win, ema }) => {
       const v = win[win.length - 1];
-      const sma = mean(win), sd = stddev(win);
-      ema = ema === null ? v : 0.2 * v + 0.8 * ema;
+      const sma = mean(win);
+      const baseline = win.slice(0, -1);
+      const bMean = baseline.length ? mean(baseline) : sma;
+      const bSd = baseline.length ? stddev(baseline) : 0;
 
       document.getElementById('rCur').textContent = v;
       document.getElementById('rSma').textContent = sma.toFixed(1);
@@ -337,13 +347,13 @@ This is the shape of every monitoring/trading/IoT dashboard: ingest a fast metri
       document.getElementById('spark').innerHTML = win.map(x =>
         `<div class="flex-1 bg-sky-500/70 rounded-sm" style="height:${(x / max) * 100}%"></div>`).join('');
 
-      // anomaly: beyond k std-devs of the SMA (needs enough samples)
-      if (win.length >= 8 && sd > 0 && Math.abs(v - sma) > K * sd) {
+      // anomaly: compare current value to the previous-window baseline
+      if (baseline.length >= 8 && bSd > 0 && Math.abs(v - bMean) > K * bSd) {
         anomalies++;
         document.getElementById('rAnom').textContent = anomalies;
         const row = document.createElement('div');
         row.className = 'text-red-400';
-        row.textContent = `${new Date().toLocaleTimeString()}  ⚠ value ${v} vs SMA ${sma.toFixed(1)} (±${(K*sd).toFixed(1)})`;
+        row.textContent = `${new Date().toLocaleTimeString()}  ⚠ value ${v} vs baseline ${bMean.toFixed(1)} (±${(K*bSd).toFixed(1)})`;
         document.getElementById('log').prepend(row);
       }
     });

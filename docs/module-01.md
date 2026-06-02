@@ -200,8 +200,8 @@ Subscribe to `interval(1000)` twice. Do both timers start at the same time?
 | `ajax()`     | HTTP requests (with cancellation)     | REST API calls |
 
 ### Pro Tips
-- Prefer `from()` over `of()` when working with arrays
-- Always use `ajax()` instead of `fetch()` when you want automatic cancellation
+- Use `from(array)` when you want each array element emitted separately; use `of(array)` when the array itself is the value
+- Use `ajax()` or `fromFetch()`/`AbortController` when HTTP cancellation matters; native `fetch()` only cancels if you wire abort support
 - Combine `timer(0, 1000)` for "immediate + repeating"
 
 ### Common Mistake
@@ -550,9 +550,9 @@ A working, clean reactive dashboard that:
    - C) You are working with static values
    - D) You want better TypeScript support
 
-4. What is the main advantage of `ajax()` over the native `fetch()`?
+4. What is the main advantage of RxJS HTTP helpers like `ajax()`/`fromFetch()` over a bare `fetch()` Promise?
    - A) Faster requests
-   - B) Automatic cancellation on unsubscription
+   - B) Observable teardown can abort the request when the helper wires cancellation
    - C) Better error messages
    - D) Built-in caching
 
@@ -568,7 +568,7 @@ A working, clean reactive dashboard that:
 - Q1: Cold observables are independent per subscriber.
 - Q2: Both `error` and `complete` terminate the stream.
 - Q3: Hot observables share expensive work (e.g. one HTTP call for many components).
-- Q4: `ajax()` returns an Observable that can be cancelled via `unsubscribe()`.
+- Q4: `ajax()` and `fromFetch()` return Observables whose teardown is wired to request cancellation; a bare `fetch()` Promise needs explicit `AbortController` handling.
 - Q5: `scan` accumulates the history array; the logic keeps a maximum of the last 10 values using array slicing inside the accumulator.
 
 ---

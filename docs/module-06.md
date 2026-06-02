@@ -42,12 +42,12 @@ Note the dependency (`process`) is passed in, never `this` — keeping the logic
 ```ts
 import { mergeMap } from 'rxjs/operators';
 
-// Route each item to a different inner Observable, with a concurrency cap.
+// Route each item to a different inner Observable, with a global concurrency cap.
 const smartFlatten = (process: (item: Task) => Observable<Result>) =>
-  mergeMap((item: Task) => process(item), item => (item.priority === 'high' ? 1 : 3));
+  mergeMap((item: Task) => process(item), 3);
 ```
 
-> `mergeMap`'s concurrency argument is a number, not a function — so for *per-item* routing we usually branch **inside** the projection instead:
+> `mergeMap`'s concurrency argument is a number, not a function. Passing a function in the second position enters the deprecated result-selector overload. For *per-item* routing, branch **inside** the projection instead:
 
 ```ts
 source$.pipe(
@@ -70,7 +70,7 @@ Most "custom" flattening is still built **on top of** `mergeMap`/`concatMap` —
 **Reaching for a hand-written operator first.** 9 times out of 10, conditional logic inside the projection plus a concurrency cap expresses what you need. Save raw operators for genuinely novel behavior (Lesson 6.3).
 
 ### Quick Exercise
-Write a projection that, for each upload task, uses `concatMap`-like ordering for `priority: 'high'` files but allows parallelism for others. (Hint: split the source by priority with `partition`, flatten each differently, then `merge`.)
+Write a projection that sends `priority: 'high'` files to a stricter processing path and all others to a capped-parallel path. If you split the source with `partition`, note that `merge(high$, low$)` lets both lanes run concurrently; use `concat(highLane$, lowLane$)` only if low-priority work must wait until all high-priority work is finished.
 
 **Key Takeaway:** Intelligent flattening = choosing the right policy per item, usually by branching inside the projection and capping concurrency — not by writing raw operators.
 
@@ -120,7 +120,7 @@ A key production decision:
 ### Measuring & Optimizing Concurrency
 Concurrency is a tuning knob, not a guess:
 - Too low → underutilized, slow throughput.
-- Too high → server 429s, memory spikes, browser connection limits (~6 per host).
+- Too high → server 429s, memory spikes, and transport/browser concurrency limits (the exact per-host limit varies by protocol and browser).
 - Measure: time a fixed batch at concurrency 1, 2, 4, 8; plot throughput; pick the knee of the curve. The project in Lesson 6.5 lets you *see* this.
 
 ### Common Mistake
@@ -138,7 +138,7 @@ A sensor emits 100 readings/second but your chart can repaint ~60 times/second. 
 **Estimated Time:** 22 minutes
 
 ### Level 1 — Compose with Existing Operators (Preferred)
-A "custom flattener" is usually just a named pipe. Here is `priorityFlatten`: high-priority items run first and exclusively, others run in parallel.
+A "custom flattener" is usually just a named pipe. Here is `priorityFlatten`: high-priority items are processed in order, while low-priority items run in parallel. Because the two lanes are merged, they may run at the same time.
 
 ```ts
 import { pipe, partition, merge, Observable } from 'rxjs';
@@ -219,7 +219,7 @@ export function flattenAll<T>(): OperatorFunction<Observable<T>, T> {
 **Forgetting completion bookkeeping in a raw flattener.** The output must complete only when the outer *and* all inners have completed (the `outerDone && active === 0` check). Miss it and your stream never completes.
 
 ### Quick Exercise
-Implement `priorityFlatten` from Level 1 and test it: feed a source of high/low tasks and assert the high-priority results complete before any low-priority work begins.
+Implement `priorityFlatten` from Level 1 and test it: feed a source of high/low tasks and assert that high-priority results preserve order while low-priority work respects the concurrency cap. Then try replacing `merge(...)` with `concat(...)` and observe how that changes the priority guarantee.
 
 **Key Takeaway:** Build custom flatteners by composition first (`partition`/`merge`, `map` + `mergeAll`); reach for a raw `Observable` only rarely, and always handle inner subscriptions, errors, and completion.
 

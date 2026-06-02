@@ -45,7 +45,7 @@ bindCallback(navigator.geolocation.getCurrentPosition); // callback API → Obse
 defer(() => from(getPromise()));          // create the Promise lazily, per subscription
 ```
 
-> Use `defer(() => from(promise()))` rather than `from(promise())` when you want the Promise created **on subscription** (lazy, retryable) instead of immediately (eager, once).
+> Use `defer(() => from(promise()))` rather than `from(promise())` when you want the Promise created **on subscription** (lazy, retryable) instead of immediately (eager, once). Unsubscribing will stop delivery to the observer, but it will not abort a native Promise's underlying work unless that work supports teardown/abort.
 
 ### Promise vs Observable Semantics
 Migrating isn't 1:1 — know the differences:
@@ -54,20 +54,20 @@ Migrating isn't 1:1 — know the differences:
 |---|---------|------------|
 | Values | one | zero, one, or many |
 | Eager/lazy | eager (runs immediately) | lazy (runs on subscribe) |
-| Cancellable | no | yes (unsubscribe) |
+| Cancellable | no | yes for the subscription; underlying work must support teardown/abort |
 | Retry | manual | `retry`/operators |
 
 ### Incremental Migration
 1. **Leaf-first** — wrap individual async calls (`from(fetch...)`) without changing callers.
 2. **Compose** — replace Promise chains (`.then().then()`) with pipes (`switchMap`/`map`).
-3. **Cancel & retry** — add the things Promises couldn't do (cancellation, backoff).
+3. **Cancel & retry** — add backoff, and use abortable sources (`ajax`, `fromFetch`, `AbortController`, or custom teardown) when real cancellation matters.
 4. **Facade** — hide the migration behind a facade (Module 17) so callers are untouched.
 
 ```ts
 // Before: Promise chain
 getUser(id).then(u => getOrders(u.id)).then(render);
 
-// After: cancellable, retryable pipe
+// After: lazy, retryable pipe; use abortable APIs for true request cancellation
 of(id).pipe(
   switchMap(id => from(getUser(id))),
   switchMap(u => from(getOrders(u.id))),
@@ -83,7 +83,7 @@ const user = await firstValueFrom(user$);
 ```
 
 ### Common Mistake
-**`from(somePromise())` when you wanted laziness.** That runs the Promise *immediately*, once — so `retry` can't re-run it and there's no cancellation. Wrap with `defer` for a fresh, lazy Promise per subscription.
+**`from(somePromise())` when you wanted laziness.** That runs the Promise *immediately*, once — so `retry` can't re-run it. Wrap with `defer` for a fresh, lazy Promise per subscription. For true cancellation, use an abortable source such as `fromFetch`, `ajax`, or a custom Observable with teardown.
 
 ### Quick Exercise
 Convert a two-step Promise chain (`getUser → getPosts`) into an RxJS pipe with `switchMap`, add `retry`, and convert the result back with `firstValueFrom`.
@@ -99,19 +99,19 @@ Convert a two-step Promise chain (`getUser → getPosts`) into an RxJS pipe with
 ### Signals Are Here
 Fine-grained **signals** (Angular, Solid, Vue, Preact) are now mainstream for synchronous UI state. As covered in Module 17, they *complement* RxJS rather than replace it: signals for synchronous derived view state, RxJS for async/time/event orchestration, bridged with `toSignal`/`toObservable`.
 
-### The TC39 Observable Proposal
-A standardized `Observable` has been proposed for the language/web platform. If it lands, framework-agnostic observables become a built-in primitive — RxJS would layer its rich operators on top of a native base, much as array methods layer on arrays.
+### The Web-Platform Observable Proposal
+A standardized `Observable` is being explored for the web platform through WICG. If a platform Observable lands, framework-agnostic observables could become a built-in primitive, and RxJS would remain valuable for its rich operator set and production patterns.
 
 ### Where RxJS Is Going
 - **Smaller, more tree-shakeable** — the v7 unified imports and ongoing size work (Module 18).
 - **Better ergonomics** — config-object operators (`retry({count, delay})`), deprecating footguns (`retryWhen`).
-- **Interop** — smoother bridges to signals and the Observable proposal.
+- **Interop** — smoother bridges to signals and platform Observable proposals.
 
 ### What Stays True
 The *mental model* you've built — thinking in streams, composition, declarative time — outlasts any single API. Whatever the syntax, "a collection that arrives over time" remains the core idea.
 
 ### Common Mistake
-**Treating signals and RxJS as competitors.** Choosing one for everything leads to pain (signals can't debounce/cancel; RxJS is overkill for a counter). The future is hybrid — right tool per job.
+**Treating signals and RxJS as competitors.** Choosing one for everything leads to pain: signal effects can approximate async orchestration, but RxJS is the better primitive for debounce/cancel/retry workflows; RxJS is overkill for a counter. The future is hybrid — right tool per job.
 
 ### Quick Exercise
 List three responsibilities you'd give signals and three you'd keep in RxJS for a 2026 app, and name the bridge functions between them.
@@ -218,7 +218,7 @@ Build a **collaborative task board** where simulated teammates and you edit shar
 
 - A `scan` + reducer store (Modules 10/11) fed by **merged** local + remote action streams (Modules 05/06)
 - **Presence** (who's online) and a live **activity feed** (who did what), conflated for performance (Module 13)
-- **Optimistic** local edits; a simulated sync with the resilience patterns (Modules 07/08) available as a stretch
+- **Optimistic** local edits; simulated sync hooks that can be extended with the resilience patterns from Modules 07/08
 - Leak-free teardown and `shareReplay` (Module 18)
 
 ### Why This Project Matters
@@ -228,7 +228,7 @@ This is the course in one screen: actions flow from multiple sources into one re
 ### Step-by-Step Build (Video-Friendly)
 
 1. **Setup** — Single HTML file with Tailwind + RxJS 7 from CDN.
-2. **Store** — reducer over `{ tasks, activity }`; `actions$ = merge(local$, remote$)` → `scan` → `state$` (`shareReplay`).
+2. **Store** — reducer over `{ tasks, activity }`; `actions$ = merge(local$, remote$)` → `scan` → `state$` (`shareReplay({ bufferSize: 1, refCount: true })`).
 3. **Remote sim** — an `interval` emitting random teammate actions (add/complete) with a user tag.
 4. **Render** — tasks (with author), a conflated activity feed, and presence.
 5. **Interact** — add/complete locally; watch teammates act concurrently.
@@ -287,9 +287,11 @@ This is the course in one screen: actions flow from multiple sources into one re
           return { tasks: [...state.tasks, { id: action.id, text: action.text, done: false, by: action.user }],
                    activity: stamp(`added “${action.text}”`) };
         case 'COMPLETE': {
-          const task = state.tasks.find(t => t.id === action.id);
+          const task = action.id === '?'
+            ? state.tasks.find(t => !t.done)
+            : state.tasks.find(t => t.id === action.id);
           if (!task || task.done) return state;
-          return { tasks: state.tasks.map(t => t.id === action.id ? { ...t, done: true } : t),
+          return { tasks: state.tasks.map(t => t.id === task.id ? { ...t, done: true } : t),
                    activity: stamp(`completed “${task.text}”`) };
         }
         default: return state;
@@ -309,31 +311,22 @@ This is the course in one screen: actions flow from multiple sources into one re
         if (Math.random() < 0.5) {
           return { type: 'ADD', text: SAMPLE[Math.floor(Math.random() * SAMPLE.length)], user, id: 't' + nextId++, t: Date.now() };
         }
-        return { type: 'COMPLETE', user, id: '?', t: Date.now() }; // id resolved in a tap below
+        return { type: 'COMPLETE', user, id: '?', t: Date.now() }; // reducer resolves to an open task
       })
     );
 
     // ===== Store =====
-    const actions$ = merge(local$, remote$).pipe(
-      // resolve a remote COMPLETE to a real open task id at dispatch time
-      map(a => {
-        if (a.type === 'COMPLETE' && a.id === '?') {
-          const open = current.tasks.filter(t => !t.done);
-          if (!open.length) return { ...a, type: 'NOOP' };
-          a = { ...a, id: open[Math.floor(Math.random() * open.length)].id };
-        }
-        return a;
-      })
+    const actions$ = merge(local$, remote$);
+    const state$ = actions$.pipe(
+      scan(reducer, initial),
+      startWith(initial),
+      shareReplay({ bufferSize: 1, refCount: true })
     );
-
-    let current = initial;
-    const state$ = actions$.pipe(scan(reducer, initial), startWith(initial), shareReplay(1));
 
     // ===== Render (single source of truth) =====
     const tasksEl = document.getElementById('tasks');
     const activityEl = document.getElementById('activity');
     state$.subscribe(state => {
-      current = state;
       tasksEl.innerHTML = state.tasks.length ? state.tasks.map(t => `
         <li class="flex items-center gap-3 bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2">
           <input type="checkbox" data-done="${t.id}" ${t.done ? 'checked' : ''} class="w-4 h-4 accent-emerald-500">
@@ -420,7 +413,7 @@ A collaborative task board where local and simulated-remote actions merge into o
 **5 Multiple Choice Questions**
 
 1. When migrating a Promise to an Observable, why prefer `defer(() => from(makePromise()))` over `from(makePromise())`?
-   - A) `defer` creates the Promise lazily per subscription, so it's cancellable and retryable
+   - A) `defer` creates the Promise lazily per subscription, so retry can re-run fresh work
    - B) `defer` makes it run immediately
    - C) `from` cannot accept a Promise
    - D) There is no difference
@@ -452,7 +445,7 @@ A collaborative task board where local and simulated-remote actions merge into o
 **Correct Answers:** 1-A, 2-C, 3-B, 4-D, 5-B
 
 **Explanations:**
-- Q1: `defer` defers Promise creation to subscription time, making it lazy, cancellable, and retryable; bare `from(promise)` runs once, eagerly.
+- Q1: `defer` defers Promise creation to subscription time, making it lazy and retryable; bare `from(promise)` runs once, eagerly. Native Promises are still not abortable unless the wrapped work supports cancellation.
 - Q2: The hybrid model uses RxJS for async/time/events and signals for synchronous derived view state, bridged with `toSignal`/`toObservable`.
 - Q3: Merging local and remote action streams into one reducer keeps a single source of truth (Modules 05/06/10).
 - Q4: `concatMap` queues writes in order with no overlap or cancellation — correct for saves/payments; `switchMap` would cancel in-flight writes.

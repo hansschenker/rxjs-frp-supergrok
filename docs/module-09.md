@@ -111,7 +111,7 @@ scheduler.run(({ cold, expectObservable }) => {
   const input$  = cold('a-b-c---|');     // a,b,c then a gap
   const result$ = input$.pipe(debounceTime(3, scheduler));
   //  only the value before the 3-frame quiet gap survives
-  expectObservable(result$).toBe('--------c-|'); // (illustrative timing)
+  expectObservable(result$).toBe('-------c|');
 });
 ```
 
@@ -151,7 +151,7 @@ Write a marble test proving `map(x => x + 1)` over `cold('-a-b-|', {a:1,b:2})` y
 **Estimated Time:** 22 minutes
 
 ### Why animationFrameScheduler
-The browser repaints ~60 times/second. Driving animation with `setInterval`/`asyncScheduler` desyncs from that cycle, causing dropped frames and jank. `animationFrameScheduler` schedules work via `requestAnimationFrame`, so your updates land exactly once per repaint — buttery smooth.
+The browser usually repaints around 60 times/second, though high-refresh displays and background tabs vary. Driving animation with `setInterval`/`asyncScheduler` can desync from that cycle, causing dropped frames and jank. `animationFrameScheduler` schedules work via `requestAnimationFrame`, so your updates are aligned with repaint.
 
 ### A Reusable Animation Stream
 A progress stream from 0 → 1 over a duration, ticking each frame:
@@ -265,7 +265,7 @@ Build an **animation dashboard** where metric bars animate smoothly to new rando
 
 ### Why This Project Matters
 
-This makes schedulers visceral. The bars move at a locked 60fps because every update lands on a repaint; the FPS meter (also rAF-driven) confirms it. You are using `animationFrameScheduler`, easing, `switchMap` staggering, and subscription control together.
+This makes schedulers visceral. The bars move on the browser's repaint cadence, and the FPS meter (also rAF-driven) shows the actual refresh behavior. You are using `animationFrameScheduler`, easing, `switchMap` staggering, and subscription control together.
 
 ### Step-by-Step Build (Video-Friendly)
 
@@ -295,7 +295,7 @@ This makes schedulers visceral. The bars move at a locked 60fps because every up
     <div class="flex items-center justify-between mb-6">
       <div>
         <h1 class="text-3xl font-semibold tracking-tight">Animation Dashboard</h1>
-        <p class="text-zinc-400 mt-1">Smooth 60fps motion via <code class="text-emerald-400">animationFrameScheduler</code></p>
+        <p class="text-zinc-400 mt-1">Repaint-aligned motion via <code class="text-emerald-400">animationFrameScheduler</code></p>
       </div>
       <div class="text-right">
         <div class="text-xs uppercase tracking-widest text-zinc-500">FPS</div>
@@ -433,7 +433,7 @@ This makes schedulers visceral. The bars move at a locked 60fps because every up
 
 A working dashboard whose bars animate smoothly to random targets with selectable easing, staggered timing, a live FPS meter, and clean cancellation on re-trigger.
 
-**Key Takeaway:** You built a 60fps animation system on `animationFrameScheduler` — easing, staggering, an rAF FPS meter, and subscription-based cancellation working together.
+**Key Takeaway:** You built a repaint-aligned animation system on `animationFrameScheduler` — easing, staggering, an rAF FPS meter, and subscription-based cancellation working together.
 
 ---
 

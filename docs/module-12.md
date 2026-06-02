@@ -55,7 +55,9 @@ const action$ = new Subject<any>();
 export const state$ = action$.pipe(
   scan(todoReducer, initialState),         // compute the NEXT state first
   startWith(initialState),
-  tap(state => devTools && devTools.send(lastAction, state)), // then send the new state
+  tap(state => {
+    if (devTools && lastAction) devTools.send(lastAction, state); // skip the initial startWith value
+  }),
   shareReplay(1)
 );
 
@@ -73,7 +75,7 @@ const dispatch = (a: any) => { lastAction = a; action$.next(a); };
 ```
 
 ### Mental Model
-> DevTools is just another **subscriber** to your state stream — it receives `(action, state)` pairs and renders them. Nothing about your store needs to change; you only *tap* it.
+> DevTools can be a subscriber to your state stream for logging/inspection. Full extension-driven time travel also requires subscribing to DevTools messages (`JUMP_TO_STATE`, `RESET`, etc.) and mapping them back to your viewed state.
 
 ### Common Mistake
 **Assuming DevTools is always there.** The extension may not be installed (or you're in production). Guard every call (`devTools && …`) so the app runs identically with or without it.
@@ -366,6 +368,22 @@ You will build the *mechanism* behind Redux DevTools in ~90 lines: record `(acti
     const live$ = action$.pipe(scan(withMetrics(reducer), initial), startWith(initial), shareReplay(1));
 
     const dispatch = a => { viewIndex$.next(null); action$.next(a); }; // dispatching returns to live
+
+    // Minimal real-extension time-travel bridge: jump messages update the viewed entry.
+    if (rdt && rdt.subscribe) {
+      rdt.subscribe(message => {
+        if (message.type !== 'DISPATCH') return;
+        if (message.payload?.type === 'RESET') viewIndex$.next(null);
+        if (message.payload?.type === 'JUMP_TO_ACTION') {
+          const i = Number(message.payload.actionId);
+          if (Number.isInteger(i) && entries[i]) viewIndex$.next(i);
+        }
+        if (message.payload?.type === 'JUMP_TO_STATE' && message.state) {
+          const i = entries.findIndex(e => JSON.stringify(e.state) === message.state);
+          if (i >= 0) viewIndex$.next(i);
+        }
+      });
+    }
 
     // --- Render: viewed state = live OR a time-traveled entry ---
     const display = document.getElementById('display');

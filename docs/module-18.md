@@ -135,7 +135,7 @@ Make a cold `defer(() => { console.log('exec'); return of(Date.now()); })`, subs
 Build a pipeline once and reuse it. Re-creating Observables/operators on every change (e.g. in a render loop) churns allocations and re-subscribes.
 
 ### Selectors & Memoization
-Derive expensive view data with `map` + `distinctUntilChanged` so it only recomputes when inputs change — not on every unrelated emission (Module 10's selector pattern).
+Derive expensive view data with `map` + `distinctUntilChanged` so it only recomputes when inputs change — not on every unrelated emission (Module 10's selector pattern). If the selector creates a new array/object, provide a comparator or memoize it; default `distinctUntilChanged()` compares references.
 
 ### Common Mistake
 **Heavy work in a hot path with no conflation.** Rendering or computing on every value of a 1000/sec feed destroys the frame budget. Conflate for display, compute incrementally, and offload heavy work.
@@ -159,7 +159,7 @@ RxJS 7 is tree-shakeable **if you import correctly**. Import named operators fro
 import { map, filter } from 'rxjs';
 import { of } from 'rxjs';
 
-// ❌ Avoid namespace imports — can defeat tree-shaking
+// Avoid namespace imports in app bundles — they can defeat tree-shaking depending on bundler settings
 import * as rxjs from 'rxjs';
 ```
 
@@ -176,7 +176,7 @@ Load feature code (and its operators) only when needed via dynamic `import()` / 
 For your own libraries (Module 16): `sideEffects: false` + per-operator files so consumers tree-shake unused operators.
 
 ### Common Mistake
-**`import * as Rx from 'rxjs'`.** A namespace import can pull the whole library into the bundle. Use named imports so unused operators are dropped.
+**`import * as Rx from 'rxjs'` in app code.** A namespace import can pull more code into the bundle depending on bundler settings. Use named imports so unused operators are easier for tools to drop.
 
 ### Quick Exercise
 Run a bundle analyzer on a small app; switch any namespace RxJS import to named imports and compare the RxJS bytes shipped.

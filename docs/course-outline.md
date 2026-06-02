@@ -40,7 +40,7 @@ The course progresses from foundational concepts to enterprise-grade architectur
 **Video Lessons**  
 3.1 The pipe() Method and Declarative Operator Chaining  
 3.2 Pure vs Impure Operators – Writing Side-Effect-Free Code  
-3.3 Transformation Operators: map, pluck, scan, tap (with debugging)  
+3.3 Transformation Operators: map, scan, tap, and migrating deprecated pluck usage
 3.4 Filtering & Utility Operators: filter, debounceTime, distinctUntilChanged, delay  
 3.5 Project: Search Feature Refactoring – From Callback Hell to Clean Pipes  
 
@@ -87,7 +87,7 @@ The course progresses from foundational concepts to enterprise-grade architectur
 ### **Module 7: Error Handling**  
 **Video Lessons**  
 7.1 Error Boundaries in Reactive Streams  
-7.2 Recovery Patterns: catchError, retry, retryWhen  
+7.2 Recovery Patterns: catchError, retry config, and legacy retryWhen
 7.3 Global Error Handling System Design  
 7.4 Logging, Telemetry, and User-Friendly Error UX  
 7.5 Project: Global Error System for Enterprise Apps  

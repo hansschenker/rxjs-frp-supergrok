@@ -22,7 +22,7 @@ Error handling is one of the most critical yet often neglected areas in reactive
 By the end of this module you will be able to:
 
 - Design proper error boundaries in reactive streams
-- Implement multiple recovery patterns (`catchError`, `retry`, `retryWhen`)
+- Implement multiple recovery patterns (`catchError`, `retry`, and legacy `retryWhen`)
 - Build a global error handling system
 - Create user-friendly error experiences
 - Design resilient applications that recover gracefully from failures
@@ -71,7 +71,7 @@ You met this in Modules 05–06: in a flattened stream, a `catchError` on the **
 **A single `catchError` at the very end of a long pipe.** It "handles errors," but it also means the *whole* pipeline dies on the first failure and restarts from nothing. Often you want a narrower boundary closer to the risky step.
 
 ### Quick Exercise
-Add a `catchError` to the broken pipeline above so the stream emits `'FALLBACK'` instead of dying. Then move it *below* the second `map` and observe that a throw there is no longer caught.
+Add a `catchError` to the broken pipeline above so the stream emits `'FALLBACK'` instead of dying. Then move it *above* the second `map` and observe that a throw in that later `map` is no longer caught.
 
 **Key Takeaway:** An error ends a stream; `catchError` is a boundary protecting everything upstream of it — its placement is the design decision.
 

@@ -40,8 +40,7 @@ When an API fails, immediately retrying can make the problem worse (especially d
 The old `retryWhen` approach is **deprecated** in RxJS 7.8+. The config form expresses backoff directly:
 
 ```ts
-import { timer } from 'rxjs';
-import { retry } from 'rxjs/operators';
+import { retry, timer } from 'rxjs';
 
 source$.pipe(
   retry({
@@ -377,12 +376,32 @@ This is a miniature of how production clients work. Crank the fail rate up and w
     const mFailure = document.getElementById('mFailure');
     const mRejected = document.getElementById('mRejected');
     const logEl = document.getElementById('log');
+    const textClass = {
+      zinc: 'text-zinc-400',
+      emerald: 'text-emerald-400',
+      amber: 'text-amber-400',
+      red: 'text-red-400'
+    };
+    const stateTheme = {
+      CLOSED: {
+        card: 'col-span-1 rounded-xl p-3 text-center border bg-emerald-500/10 border-emerald-500',
+        value: 'text-lg font-bold mt-1 text-emerald-300'
+      },
+      HALF_OPEN: {
+        card: 'col-span-1 rounded-xl p-3 text-center border bg-amber-500/10 border-amber-500',
+        value: 'text-lg font-bold mt-1 text-amber-300'
+      },
+      OPEN: {
+        card: 'col-span-1 rounded-xl p-3 text-center border bg-red-500/10 border-red-500',
+        value: 'text-lg font-bold mt-1 text-red-300'
+      }
+    };
 
     rate.addEventListener('input', () => rateVal.textContent = rate.value + '%');
 
     function log(msg, colour = 'zinc') {
       const line = document.createElement('div');
-      line.className = `text-${colour}-400`;
+      line.className = textClass[colour] || textClass.zinc;
       line.textContent = `${new Date().toLocaleTimeString()}  ${msg}`;
       logEl.prepend(line);
     }
@@ -477,9 +496,9 @@ This is a miniature of how production clients work. Crank the fail rate up and w
     interval(250).subscribe(() => {
       const s = breaker.getState();
       stateVal.textContent = s;
-      const colour = s === 'CLOSED' ? 'emerald' : s === 'OPEN' ? 'red' : 'amber';
-      stateCard.className = `col-span-1 rounded-xl p-3 text-center border bg-${colour}-500/10 border-${colour}-500`;
-      stateVal.className = `text-lg font-bold mt-1 text-${colour}-300`;
+      const theme = stateTheme[s] || stateTheme.CLOSED;
+      stateCard.className = theme.card;
+      stateVal.className = theme.value;
       if (s === 'OPEN') {
         const remaining = Math.max(0, breaker.cooldownMs - (Date.now() - breaker.openedAt()));
         cooldownEl.textContent = `retry in ${(remaining / 1000).toFixed(1)}s`;
@@ -569,7 +588,7 @@ You can now build systems that survive failure:
 - The resilience ladder: backoff → breaker → fallback streams → graceful message, with reads vs writes handled differently
 - Resilience testing with a chaos wrapper and the `TestScheduler`
 
-**Next Module:** Module 09 – Subjects & Multicasting (`Subject`, `BehaviorSubject`, `ReplaySubject`, `AsyncSubject`, and sharing a single execution among many subscribers)
+**Next Module:** Module 09 – Schedulers Deep Dive (`asyncScheduler`, `animationFrameScheduler`, virtual time, and animation timing)
 
 **Recommended Practice:** Extend the Resilient API Client with jitter, a transient-only retry guard, and a rolling-window failure count, then drive it with the chaos wrapper.
 

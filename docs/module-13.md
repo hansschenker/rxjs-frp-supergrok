@@ -152,6 +152,8 @@ ticks$.pipe(
 ).subscribe(renderSymbol);
 ```
 
+For a known, small symbol list this is fine. If keys are unbounded (user ids, request ids, ad-hoc topics), give `groupBy` a duration/cleanup strategy so old groups can complete instead of accumulating forever.
+
 ### WebSocket Feeds
 `webSocket()` (from `rxjs/webSocket`) gives you a `Subject` over a socket. Apply the same rate-limiting downstream; and for reconnection, layer the retry/backoff from Module 08:
 
@@ -168,7 +170,7 @@ You can't fix what you can't see. Track and alert on:
 - **Buffer depth / lag** (growing = losing the race)
 - **Drop count** (how much you're shedding)
 
-A simple gauge: `ratio = processed / received`. A persistently falling ratio means the consumer is drowning.
+A simple gauge: `ratio = processed / received`. A persistently falling ratio means the consumer is shedding more work or drowning. A lower render ratio can be healthy when you intentionally conflate, but it is a problem if freshness or completeness is required.
 
 ### Common Mistake
 **Rendering on every websocket message.** A 1000 msg/sec feed will destroy your frame budget. Ingest all, render conflated (`sampleTime`/`auditTime`), per key with `groupBy`.
@@ -427,7 +429,7 @@ A live ticker that ingests a 40/sec feed losslessly, renders via a selectable ba
 - Q2: RxJS is push-based (no `request(n)`), so backpressure is achieved with rate-control/drop operators rather than demand signaling.
 - Q3: `sampleTime`/`auditTime` emit the latest value per time window — ideal conflation for a ticker.
 - Q4: Ingest is cheap and lossless (update state every tick); rendering is expensive, so it runs at a controlled rate.
-- Q5: A lower `renders / ticks` ratio means the strategy avoided more rendering work — your backpressure gauge.
+- Q5: A lower `renders / ticks` ratio means the strategy avoided more rendering work. That is good for intentional conflation, but it must be balanced against freshness requirements.
 
 ---
 

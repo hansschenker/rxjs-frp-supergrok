@@ -43,10 +43,10 @@ Good naming is one of the most underrated skills in reactive programming. When y
 
 **Good Examples:**
 - `searchUsers$`
-- `validateOrder$`
-- `enrichWithProfile$`
-- `retryWithBackoff$`
-- `debounceUserInput$`
+- `validateOrder()`
+- `enrichWithProfile()`
+- `retryWithBackoff()`
+- `debounceUserInput()`
 
 **Bad Examples:**
 - `map1$`, `filter2$`, `customOp$`
@@ -451,7 +451,7 @@ This is the module's thesis made runnable: the *consumer* code names business in
     }
 
     // === Reactive criteria stream ===
-    // merge both control streams into one; we cover combination operators in Module 06.
+    // merge both control streams into one; flattening and combination patterns continue in Modules 05-06.
     const search$ = fromEvent(searchInput, 'input');
     const tag$ = fromEvent(tagSelect, 'change');
 
@@ -470,7 +470,7 @@ This is the module's thesis made runnable: the *consumer* code names business in
 
 ### Important Note on Async Data
 
-Our `POSTS` are local, so `from(POSTS)` completes immediately and `toArray()` is perfect. With a **real API**, `withReadingTime` might call a service per post — that is where `mergeMap`/`switchMap` (Module 05) and combination operators (Module 06) come in. The domain-operator *structure* stays identical; only the inner data source changes.
+Our `POSTS` are local, so `from(POSTS)` completes immediately and `toArray()` is perfect. With a **real API**, `withReadingTime` might call a service per post — that is where `mergeMap`/`switchMap` from Module 05 and the custom flattening patterns from Module 06 come in. The domain-operator *structure* stays identical; only the inner data source changes.
 
 ### Key Lessons from This Project
 

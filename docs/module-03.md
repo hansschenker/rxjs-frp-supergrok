@@ -480,7 +480,7 @@ The refactor is not about fewer lines — it is about **expressing intent**. `de
 
 ### Important Note on Async Search
 
-Our `search()` runs synchronously over a local array, so a plain `map` is perfect. When the query triggers a **real HTTP request**, you would swap that last `map` for `switchMap` — which cancels the previous in-flight request when a new query arrives. That is a *higher-order* operator; we cover it thoroughly in **Module 04 (Domain Operators)** and **Module 05 (Combination)**.
+Our `search()` runs synchronously over a local array, so a plain `map` is perfect. When the query triggers a **real HTTP request**, you would swap that last `map` for `switchMap` — which unsubscribes from the previous in-flight request when a new query arrives. That is a *higher-order* operator; we preview the domain-operator shape in **Module 04** and cover flattening thoroughly in **Module 05**.
 
 ### Key Lessons from This Project
 
@@ -492,7 +492,7 @@ Our `search()` runs synchronously over a local array, so a plain `map` is perfec
 ### Stretch Goals (Recommended Practice)
 
 1. Add a loading spinner using `tap` to show "searching…" and clear it in the subscriber.
-2. Replace the local `search()` with a fake async one (return a `Promise`/`of(...).pipe(delay(...))`) and refactor to `switchMap` (preview of Module 04).
+2. Replace the local `search()` with a fake async one (return a `Promise`/`of(...).pipe(delay(...))`) and refactor to `switchMap` (preview of Module 05).
 3. Add keyboard navigation (arrow keys) over the results using another `fromEvent` stream.
 4. Highlight matches case-insensitively across multiple words.
 
@@ -562,7 +562,7 @@ You now command the **core composition skill** of RxJS:
 - Filtering & timing operators: `filter`, `debounceTime`, `distinctUntilChanged`, `delay`
 - Refactoring tangled callback code into a single declarative pipe
 
-**Next Module:** Module 04 – Domain Operators (higher-order mapping with `mergeMap`, `switchMap`, `concatMap`, `exhaustMap`, plus building and testing custom operators)
+**Next Module:** Module 04 – Domain Operators (naming reusable business pipelines and building custom domain-specific operators)
 
 **Recommended Practice:** Take a piece of imperative event-handling code from one of your own projects and refactor it into a single pipe. Name each operator's job before you write it.
 
