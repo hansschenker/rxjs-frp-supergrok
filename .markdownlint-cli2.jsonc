@@ -1,0 +1,27 @@
+// markdownlint-cli2 configuration for the RxJS Mastery course docs.
+// Goal: catch structural problems (especially unlabeled code fences, MD040)
+// without fighting the course's intentional authoring style.
+{
+  "config": {
+    "default": true,
+
+    // --- Intentional course style: disabled on purpose ---
+    "MD013": false, // line-length: prose and marble diagrams run long by design
+    "MD022": false, // blanks-around-headings: stylistic, not enforced here
+    "MD024": false, // no-duplicate-heading: lessons intentionally repeat "Why This Matters", "Common Mistake", "Quick Exercise"
+    "MD026": false, // trailing-punctuation-in-heading: question-style headings are intentional
+    "MD029": false, // ordered-list-prefix: numbering style varies in step-by-step builds
+    "MD031": false, // blanks-around-fences: stylistic
+    "MD032": false, // blanks-around-lists: stylistic
+    "MD033": false, // inline-HTML: not used in prose, but allowed if needed
+    "MD036": false, // emphasis-as-heading: the bolded "Key Takeaway:" / "Why:" lines are intentional
+    "MD058": false, // blanks-around-tables: stylistic
+    "MD060": false, // (table/link style rule — noisy against this content)
+    "MD001": false  // heading-increment: course-outline.md uses ### per module by design
+
+    // Everything else stays at markdownlint defaults — notably:
+    //   MD040 (fenced-code-language) stays ON, catching the bare ``` fences
+    //   that originally shipped in the module stubs.
+  },
+  "globs": ["docs/**/*.md"]
+}
