@@ -1,0 +1,5 @@
+# Patterns (regex) of links lychee should ignore.
+
+# Template-literal "URLs" that appear inside demo code blocks are not real
+# links, e.g. https://api.github.com/search/users?q=${encodeURIComponent(query)}
+\$\{
