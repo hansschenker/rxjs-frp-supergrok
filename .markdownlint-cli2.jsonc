@@ -23,5 +23,10 @@
     //   MD040 (fenced-code-language) stays ON, catching the bare ``` fences
     //   that originally shipped in the module stubs.
   },
-  "globs": ["docs/**/*.md"]
+  "globs": ["docs/**/*.md"],
+
+  // The VitePress home page uses a hero "layout: home" front matter block and
+  // intentionally has no top-level H1, so it cannot satisfy MD041. It is site
+  // chrome, not course prose — exclude it from linting.
+  "ignores": ["docs/index.md"]
 }
