@@ -15,7 +15,7 @@ Everything lives in `docs/`:
 - `course-outline.md` — the authoritative lesson-by-lesson outline (5 lessons + 1 quiz per module). Treat this as the spec for what each module must cover.
 - `readme.md` — course-level overview.
 - `course-completion.md` — capstone/certificate material.
-- `MODULE_IMPROVEMENT_PLAN_Module_03_10.md` and `MODULES_IMPROVEMENT_PLAN_11_TO_20.md` — review notes and quality roadmaps. Module 01 (score 9.2) and Module 02 are the reference quality bar ("v2.0"); other modules are being brought up to that standard. Check the relevant plan before improving a module — it lists the specific gaps already identified.
+- `MODULE_IMPROVEMENT_PLAN_Module_03_10.md` and `MODULES_IMPROVEMENT_PLAN_11_TO_20.md` — review notes and quality roadmaps, now both marked ✅ completed. **All 20 modules have been brought to the "v2.0" quality bar** (5 lessons + a runnable project + quiz + summary each); Module 01 remains the reference template for structure and style. The plans are retained as a historical record of the original review — useful as polish direction if revising a module, not as a description of current state.
 
 ## Module structure (the template every module follows)
 
