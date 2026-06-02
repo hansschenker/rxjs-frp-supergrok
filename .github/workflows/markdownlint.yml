@@ -3,18 +3,13 @@ name: Markdown Lint
 # Lints the course Markdown in docs/ with markdownlint-cli2.
 # Config (rules + globs) lives in .markdownlint-cli2.jsonc at the repo root.
 
+# Runs on every push to main and every PR (no path filter): because this is a
+# required check on main, it must always report a status, or PRs that don't
+# touch docs would be blocked waiting for a check that never runs.
 on:
   push:
     branches: [main]
-    paths:
-      - "docs/**/*.md"
-      - ".markdownlint-cli2.jsonc"
-      - ".github/workflows/markdownlint.yml"
   pull_request:
-    paths:
-      - "docs/**/*.md"
-      - ".markdownlint-cli2.jsonc"
-      - ".github/workflows/markdownlint.yml"
 
 # Least privilege: the job only needs to read the repo.
 permissions:

@@ -1,0 +1,53 @@
+name: Link Check
+
+# Checks links in the course Markdown with lychee.
+# Most current links are CDN <script> tags inside demo code; this mainly guards
+# against broken links in any prose/relative links added in the future.
+# Ignore patterns live in .lycheeignore (e.g. template-literal URLs in demos).
+#
+# Not a required check — it's informational, so transient external hiccups
+# don't block merges. (Only "markdownlint" is required on main.)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**/*.md"
+      - ".lycheeignore"
+      - ".github/workflows/link-check.yml"
+  pull_request:
+    paths:
+      - "docs/**/*.md"
+      - ".lycheeignore"
+      - ".github/workflows/link-check.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: link-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          # Lenient on redirects and rate limits to avoid false failures.
+          args: >-
+            --no-progress
+            --accept 200,206,301,302,307,308,429
+            --max-retries 3
+            --retry-wait-time 5
+            "docs/**/*.md"
+          fail: true
+          # Today every URL lives inside demo code blocks (which lychee doesn't
+          # extract), so "no links found" is expected and must not fail the job.
+          # Real prose/relative links added later will still be checked.
+          failIfEmpty: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
