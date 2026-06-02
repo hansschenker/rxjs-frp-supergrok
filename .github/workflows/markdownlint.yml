@@ -1,0 +1,41 @@
+name: Markdown Lint
+
+# Lints the course Markdown in docs/ with markdownlint-cli2.
+# Config (rules + globs) lives in .markdownlint-cli2.jsonc at the repo root.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**/*.md"
+      - ".markdownlint-cli2.jsonc"
+      - ".github/workflows/markdownlint.yml"
+  pull_request:
+    paths:
+      - "docs/**/*.md"
+      - ".markdownlint-cli2.jsonc"
+      - ".github/workflows/markdownlint.yml"
+
+# Least privilege: the job only needs to read the repo.
+permissions:
+  contents: read
+
+# Cancel superseded runs on the same ref.
+concurrency:
+  group: markdownlint-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  markdownlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+
+      # Pinned to the version verified locally so a green run stays reproducible.
+      # markdownlint-cli2 auto-discovers .markdownlint-cli2.jsonc (rules + globs).
+      - name: Run markdownlint
+        run: npx --yes markdownlint-cli2@0.22.1
