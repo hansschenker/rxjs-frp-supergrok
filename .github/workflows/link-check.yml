@@ -45,5 +45,9 @@ jobs:
             --retry-wait-time 5
             "docs/**/*.md"
           fail: true
+          # Today every URL lives inside demo code blocks (which lychee doesn't
+          # extract), so "no links found" is expected and must not fail the job.
+          # Real prose/relative links added later will still be checked.
+          failIfEmpty: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
